@@ -5,6 +5,7 @@ import "./game.css";
 import "./immersive.css";
 import "./parallel-refinement.css";
 import "./tarot-draw.css";
+import "./playtest-visual.css";
 
 export const metadata: Metadata = {
   title: "HerParaLives 她的平行人生",
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#252541",
+  viewportFit: "cover",
+  themeColor: "#1c2b29",
 };
 
 export default function RootLayout({
