@@ -563,6 +563,79 @@ html {
     font-size: 26px;
   }
 }
+.choice-result {
+  margin: 28px 0 8px;
+  padding: 2px 0 4px 16px;
+  border-left: 2px solid rgba(232, 214, 176, 0.72);
+  text-align: left;
+}
+.choice-result h3 {
+  margin: 6px 0 10px;
+  font: 20px/1.55 var(--serif);
+  color: #f6efe4;
+}
+.choice-result p {
+  margin: 0 0 10px;
+  color: #f3eee4;
+  line-height: 1.75;
+}
+.choice-result .primary {
+  margin-top: 8px;
+}
+.readiness,
+.readiness-meter,
+.fragment-rules {
+  margin: 22px 0;
+  padding: 16px 18px;
+  border: 1px solid rgba(232, 214, 176, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 248, 232, 0.04);
+  color: #e7ecdf;
+  line-height: 1.75;
+}
+.readiness h3,
+.readiness-meter h3 {
+  margin: 14px 0 8px;
+  color: #f6efe4;
+  font: 18px/1.5 var(--serif);
+}
+.readiness h3:first-child,
+.readiness-meter .eyebrow + h3 {
+  margin-top: 8px;
+}
+.readiness p,
+.readiness-meter p,
+.fragment-rules p {
+  margin: 0 0 12px;
+}
+.readiness-meter ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+.readiness-meter li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.personal-life .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.login-field input {
+  font-size: 16px;
+}
+@media (max-width: 600px) {
+  .personal-life .actions .primary,
+  .personal-life .actions .secondary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 /* System reduced-motion still zeroes animations (see immersive.css). A manual
    动效开 adds .motion-forced and these rules win on specificity, so the aura,
    fragment, radar, and chapter entrance actually play. 动效关 removes the

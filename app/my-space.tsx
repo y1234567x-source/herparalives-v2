@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { storyCatalog } from "@/content/stories/catalog";
 import { DIMENSIONS, DIMENSION_INFO } from "@/lib/dimensions";
+import { canExchange, emptyWallet, GUARANTEE_EVERY } from "@/lib/fragments";
+import { earnedFragments } from "@/lib/journey";
 import { summarizeLibrary, type JourneyRecord } from "@/lib/local-library";
 import FragmentGem from "./fragment-gem";
 
@@ -24,6 +26,10 @@ export default function MySpace({
     records,
     storyCatalog.map((e) => e.story),
   );
+  const kinds = DIMENSIONS.filter((dimension) => fragments[dimension] > 0);
+  const exchangeReady = canExchange({ ...emptyWallet(), fragments });
+  const since = completed % GUARANTEE_EVERY;
+  const untilGuarantee = since === 0 ? GUARANTEE_EVERY : GUARANTEE_EVERY - since;
   return (
     <section className="my-space" aria-label="我的">
       <div className="my-identity">
@@ -35,7 +41,7 @@ export default function MySpace({
           <h1>{userLabel ? "欢迎回来，旅人。" : "每一种选择，都属于你。"}</h1>
           <p className="my-status">
             {userLabel ? userLabel + " · 已登录" : "访客旅人"}
-            <span>记录保存在这台设备</span>
+            <span>记录只在这台设备，登录不会同步到云端</span>
           </p>
         </div>
         <button
@@ -85,7 +91,7 @@ export default function MySpace({
       {tab === "fragments" ? (
         <div role="tabpanel" id="fragment-panel" aria-labelledby="fragment-tab">
           <p className="collection-intro">
-            走完一章，便留下一片回响。不是分数，是你陪她走过的痕迹。
+            走完一章留下一枚，取这一章出现最多的维度；三种都不同时，以最后一次为准。不是分数。
           </p>
           <div className="gem-collection">
             {DIMENSIONS.map((d) => (
@@ -107,9 +113,23 @@ export default function MySpace({
               </article>
             ))}
           </div>
-          <p className="collection-footnote">
-            集齐五种碎片，便离「我的平行人生」更近一步。当前样篇的收集保留在本机。
-          </p>
+          <div className="fragment-rules">
+            <p>
+              已拾起 {kinds.length} / {DIMENSIONS.length} 种。
+              {exchangeReady
+                ? "五种都有了，按现有规则可以兑换一次。"
+                : "五种各至少一枚，才按规则兑换一次「我的平行人生」。"}
+              这里只展示本机进度，不扣减，也不发放次数。
+            </p>
+            <p>
+              每完成 {GUARANTEE_EVERY} 条故事，规则上还有一次保底。已走完 {completed}{" "}
+              条
+              {completed > 0 && since === 0
+                ? "，刚好满一轮，下一次要再走完 " + GUARANTEE_EVERY + " 条。"
+                : "，距下一次保底还差 " + untilGuarantee + " 条。"}
+              多出来的同类会留下，兑换时每种只扣一枚。
+            </p>
+          </div>
         </div>
       ) : (
         <div
@@ -119,29 +139,38 @@ export default function MySpace({
           className="atlas-collection"
         >
           {journeys.length ? (
-            journeys.map(({ record, story, choices, complete }) => (
-              <button
-                key={record.id}
-                className="atlas-entry"
-                onClick={() => onResume(record)}
-              >
-                <div className="atlas-miniature" aria-hidden="true">
-                  ✧
-                </div>
-                <div>
-                  <small>
-                    {story.card.name} · {complete ? "已抵达结局" : "人生进行中"}
-                  </small>
-                  <h3>{story.card.tagline}</h3>
-                  <p>
-                    {complete
-                      ? "回看这一路的选择"
-                      : "已走过 " + choices.length + " 个岔路"}
-                  </p>
-                </div>
-                <span>继续走近她 →</span>
-              </button>
-            ))
+            journeys.map(({ record, story, choices, complete }) => {
+              const dropped = earnedFragments(story, choices);
+              return (
+                <button
+                  key={record.id}
+                  className="atlas-entry"
+                  onClick={() => onResume(record)}
+                >
+                  <div className="atlas-miniature" aria-hidden="true">
+                    ✧
+                  </div>
+                  <div>
+                    <small>
+                      {story.card.name} · {complete ? "已抵达结局" : "人生进行中"}
+                    </small>
+                    <h3>{story.card.tagline}</h3>
+                    <p>
+                      {complete
+                        ? "回看这一路的选择"
+                        : "已走过 " + choices.length + " 个岔路"}
+                      {dropped.length
+                        ? " · 章末碎片 " +
+                          dropped
+                            .map((dimension) => DIMENSION_INFO[dimension].label)
+                            .join("、")
+                        : ""}
+                    </p>
+                  </div>
+                  <span>继续走近她 →</span>
+                </button>
+              );
+            })
           ) : (
             <div className="space-empty">
               <span aria-hidden="true">✧</span>

@@ -7,6 +7,7 @@ import StoryHall from "./story-hall";
 import VortexScene from "./vortex-scene";
 import MySpace from "./my-space";
 import LoginOverlay from "./login-overlay";
+import PersonalLife from "./personal-life";
 import FragmentGem from "./fragment-gem";
 import type { AuthStatus } from "@/lib/auth-contract";
 import {
@@ -16,8 +17,8 @@ import {
   upsertJourney,
   type JourneyRecord,
 } from "@/lib/local-library";
-import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
-import type { Story, StoryOption } from "@/lib/story-schema";
+import { DIMENSIONS, DIMENSION_INFO as info, type Dimension } from "@/lib/dimensions";
+import type { Chapter, Story, StoryOption } from "@/lib/story-schema";
 import {
   chooseEnding,
   earnedFragments,
@@ -142,6 +143,11 @@ function StoryPlate({
 
 function chapterTone(index: number) {
   return "tone-" + (((index % 5) + 5) % 5);
+}
+
+function chapterLookback(chapter: Chapter, dimension: Dimension | undefined) {
+  const keyed = dimension ? chapter.coach[dimension] : undefined;
+  return keyed || chapter.coachDefault;
 }
 export default function Experience() {
   const [view, setView] = useState<View>("home");
@@ -550,13 +556,11 @@ export default function Experience() {
               <p className="muted small">每个选择都有获得，也有代价。</p>
             </>
           ) : (
-            <div className="coach" aria-live="polite">
-              <p className="eyebrow">
-                选择之后 · {info[feedback.dimension].label}
-              </p>
+            <div className="choice-result" aria-live="polite">
+              <p className="eyebrow">这个选择</p>
               <h3>{feedback.text}</h3>
               <p>{feedback.reason}</p>
-              <p className="muted">代价：{feedback.cost}</p>
+              <p className="muted">要付出：{feedback.cost}</p>
               <button className="primary" onClick={next}>
                 继续这段人生 →
               </button>
@@ -583,7 +587,9 @@ export default function Experience() {
           </p>
           <div className="coach">
             <span>✧ 一点回望</span>
-            <p>{chapter.coachDefault}</p>
+            <p>
+              {chapterLookback(chapter, fragments[fragments.length - 1])}
+            </p>
           </div>
           <div
             className="fragment-earned"
@@ -658,29 +664,11 @@ export default function Experience() {
         />
       )}
       {view === "personal" && (
-        <section className="reader">
-          <p className="eyebrow">YOUR PARALLEL LIFE</p>
-          <h1>
-            把现实里的问号，
-            <br />
-            放进另一段人生。
-          </h1>
-          <p className="prose">
-            你的困惑将被改写为虚构角色，经过角色确认后，再走过 3–5 个关键岔路。
-          </p>
-          <div className="coach">
-            <h3>这扇门，还在准备中。</h3>
-            <p>
-              个人故事生成、脱敏处理和账号权益尚未接入，因此这里暂不收集你的现实困惑。
-            </p>
-            <p className="muted">
-              正式版五种碎片各一枚可兑换一次体验；每完成四条故事提供一次保底解锁。开发样篇不发放正式权益。
-            </p>
-          </div>
-          <button className="primary" onClick={() => go("hall")}>
-            去故事馆，体验她的人生 →
-          </button>
-        </section>
+        <PersonalLife
+          records={library}
+          onHall={() => go("hall")}
+          onCollection={() => go("collection")}
+        />
       )}
       {view !== "home" && (
         <p className="game-endnote">人物与未来均为虚构 · 不替你选择人生</p>
