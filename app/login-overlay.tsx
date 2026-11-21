@@ -16,6 +16,7 @@ export default function LoginOverlay({
   onSuccess: (label: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<"invite" | "phone">(
     reason === "draw" ? "invite" : "phone",
   );
@@ -53,6 +54,7 @@ export default function LoginOverlay({
       setSent(true);
       setCountdown(60);
       setMessage("验证码已发送，请留意手机短信。");
+      codeInput.current?.focus();
     } catch {
       setMessage("网络暂时未连接，请稍后再试。");
     } finally {
@@ -107,6 +109,27 @@ export default function LoginOverlay({
           <FragmentGem />
         </div>
         <p className="eyebrow">A PLACE FOR YOUR OTHER LIVES</p>
+        {!auth.configured ? (
+          <>
+            <h2 id="login-title">短信登录还没接上</h2>
+            <p className="login-copy">
+              这台环境没有配置短信服务，所以发不了验证码。你不需要登录也能把故事走完。碎片和图鉴留在这台设备上，不会被拦住，也不会同步到云端。
+            </p>
+            <button
+              className="primary login-main"
+              onClick={reason === "draw" ? onGuest : onClose}
+            >
+              {reason === "draw" ? "以游客继续抽卡" : "回到我的，继续游客体验"}{" "}
+              <span>→</span>
+            </button>
+            {reason === "draw" && (
+              <button className="login-guest" type="button" onClick={onClose}>
+                先不抽了
+              </button>
+            )}
+          </>
+        ) : (
+          <>
         <h2 id="login-title">
           {stage === "invite" ? (
             <>
@@ -170,6 +193,7 @@ export default function LoginOverlay({
               <span>短信验证码</span>
               <div>
                 <input
+                  ref={codeInput}
                   aria-label="短信验证码"
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -190,10 +214,11 @@ export default function LoginOverlay({
                 </button>
               </div>
             </label>
-            {!auth.configured && (
-              <p className="login-availability">
-                短信登录暂未开放。你可以先以游客身份体验，碎片与图鉴仍会留在本机。
-              </p>
+            {phone.length > 0 && !validPhone && (
+              <p className="login-availability">请输入 11 位中国大陆手机号。</p>
+            )}
+            {!sent && validPhone && (
+              <p className="login-availability">先获取验证码，再登录。</p>
             )}
             <p className="login-message" role="status">
               {message}
@@ -214,6 +239,8 @@ export default function LoginOverlay({
               {reason === "draw" ? "稍后登录，先抽卡" : "先以游客身份继续"}
             </button>
           </form>
+        )}
+          </>
         )}
       </div>
     </dialog>

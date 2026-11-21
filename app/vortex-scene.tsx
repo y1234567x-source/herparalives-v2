@@ -27,11 +27,17 @@ export default function VortexScene({
     const resize = () => {
       width = element.clientWidth;
       height = element.clientHeight;
-      const scale = Math.min(window.devicePixelRatio || 1, 1.5);
-      element.width = width * scale;
-      element.height = height * scale;
+      if (width < 2 || height < 2) return;
+      // Full-viewport buffers plus CSS blur are a common reason a phone tab
+      // dies on the first screen. Keep a lighter bitmap on small or idle scenes.
+      const scale =
+        !active || width < 768
+          ? 1
+          : Math.min(window.devicePixelRatio || 1, 1.5);
+      element.width = Math.floor(width * scale);
+      element.height = Math.floor(height * scale);
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      if (!active || paused || media.matches) paint(7);
+      if (!active || paused || media.matches) paint(elapsed);
     };
     const paint = (time: number) => {
       ctx.clearRect(0, 0, width, height);
@@ -60,8 +66,9 @@ export default function VortexScene({
       }
       // 固定种子的星尘，服务端和客户端都不产生随机布局抖动。
       for (let i = 0; i < 95; i++) {
-        const p = (i * 0.618 + time * 0.016) % 1;
-        const angle = i * 2.399 + p * 0.9 + time * 0.008;
+        // Fast enough that pausing the toggle is visible within a second.
+        const p = (i * 0.618 + time * 0.05) % 1;
+        const angle = i * 2.399 + p * 0.9 + time * 0.022;
         const r = 50 + p * p * reach;
         const x = cx + Math.cos(angle) * r,
           y = cy + Math.sin(angle) * r * 0.75;
@@ -75,7 +82,7 @@ export default function VortexScene({
         const tileW = sprite.naturalWidth / 4,
           tileH = sprite.naturalHeight / 2;
         for (let i = 0; i < 12; i++) {
-          const p = (i / 12 + time * 0.009) % 1;
+          const p = (i / 12 + time * 0.024) % 1;
           const angle = i * 2.399;
           const r = 180 + Math.pow(p, 1.6) * reach;
           const x = cx + Math.cos(angle) * r,
@@ -88,8 +95,10 @@ export default function VortexScene({
           if (
             Math.abs(x - cx) < width * 0.24 &&
             Math.abs(y - cy) < height * 0.25
-          )
+          ) {
+            ctx.restore();
             continue;
+          }
           ctx.globalAlpha = 0.92;
           ctx.drawImage(
             sprite,
@@ -109,7 +118,9 @@ export default function VortexScene({
     };
     const animate = (stamp: number) => {
       if (disposed) return;
-      const moving = active && !paused && !media.matches && !document.hidden;
+      // `paused` is the on-screen toggle. It already starts paused when the
+      // system asks for reduced motion, and a later tap can turn motion back on.
+      const moving = active && !paused && !document.hidden;
       if (moving && previous) elapsed += Math.min(stamp - previous, 50) / 1000;
       previous = stamp;
       if (moving) {
@@ -123,7 +134,7 @@ export default function VortexScene({
       cancelAnimationFrame(frame);
       previous = 0;
       paint(elapsed);
-      if (active && !paused && !media.matches && !document.hidden)
+      if (active && !paused && !document.hidden)
         frame = requestAnimationFrame(animate);
     };
     media.addEventListener("change", refresh);

@@ -7,6 +7,8 @@ import StoryHall from "./story-hall";
 import VortexScene from "./vortex-scene";
 import MySpace from "./my-space";
 import LoginOverlay from "./login-overlay";
+import PersonalLife from "./personal-life";
+import FragmentGem from "./fragment-gem";
 import type { AuthStatus } from "@/lib/auth-contract";
 import {
   LIBRARY_KEY,
@@ -15,8 +17,8 @@ import {
   upsertJourney,
   type JourneyRecord,
 } from "@/lib/local-library";
-import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
-import type { Story, StoryOption } from "@/lib/story-schema";
+import { DIMENSIONS, DIMENSION_INFO as info, type Dimension } from "@/lib/dimensions";
+import type { Chapter, Story, StoryOption } from "@/lib/story-schema";
 import {
   chooseEnding,
   earnedFragments,
@@ -28,8 +30,14 @@ import { resolveGameScreen, type GameScreen } from "@/lib/game-navigation";
 type View = GameScreen;
 function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
   const state = journeyState(choices);
-  const point = (i: number, r: number) =>
-    `${110 + Math.sin((i * Math.PI * 2) / 5) * r},${110 - Math.cos((i * Math.PI * 2) / 5) * r}`;
+  const point = (i: number, r: number) => {
+    const x = 110 + Math.sin((i * Math.PI * 2) / 5) * r;
+    const y = 110 - Math.cos((i * Math.PI * 2) / 5) * r;
+    return [x, y] as const;
+  };
+  const shape = DIMENSIONS.map((d, i) =>
+    point(i, 30 + Math.min(58, Math.max(0, state[d]) * 7)),
+  );
   return (
     <svg
       viewBox="0 0 220 220"
@@ -37,24 +45,45 @@ function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
       role="img"
       aria-label={name + "的五维处境示意，无数字评分"}
     >
-      {[35, 60, 85].map((r) => (
+      <circle className="radar-glow" cx="110" cy="110" r="78" />
+      {[34, 56, 78].map((r) => (
         <polygon
           key={r}
-          points={DIMENSIONS.map((_, i) => point(i, r)).join(" ")}
-          fill="none"
-          stroke="#ddd8df"
+          className="radar-ring"
+          points={DIMENSIONS.map((_, i) => point(i, r).join(",")).join(" ")}
         />
       ))}
-      <polygon
-        points={DIMENSIONS.map((d, i) =>
-          point(i, 35 + Math.min(50, state[d] * 5)),
-        ).join(" ")}
-        fill="#9d8eb642"
-        stroke="#88749f"
-        strokeWidth="2"
-      />
       {DIMENSIONS.map((d, i) => {
-        const [x, y] = point(i, 100).split(",");
+        const [x, y] = point(i, 78);
+        return (
+          <line
+            key={d}
+            x1="110"
+            y1="110"
+            x2={x}
+            y2={y}
+            stroke={info[d].color}
+            strokeOpacity="0.55"
+          />
+        );
+      })}
+      <polygon
+        className="radar-shape"
+        points={shape.map((p) => p.join(",")).join(" ")}
+      />
+      {shape.map(([x, y], i) => (
+        <circle
+          key={DIMENSIONS[i]}
+          cx={x}
+          cy={y}
+          r="4.5"
+          fill={info[DIMENSIONS[i]].color}
+          stroke="#f6efe2"
+          strokeWidth="1"
+        />
+      ))}
+      {DIMENSIONS.map((d, i) => {
+        const [x, y] = point(i, 100);
         return (
           <text
             key={d}
@@ -63,7 +92,7 @@ function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
             textAnchor="middle"
             dominantBaseline="middle"
             fill={info[d].color}
-            fontSize="12"
+            fontSize="13"
           >
             {info[d].label}
           </text>
@@ -71,6 +100,54 @@ function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
       })}
     </svg>
   );
+}
+
+function StoryPlate({
+  story,
+  frame,
+}: {
+  story: Story;
+  frame: number;
+}) {
+  const kind = (["banner", "medallion", "ledger"] as const)[frame % 3];
+  return (
+    <figure className={"story-plate plate-" + kind}>
+      {story.card.portrait ? (
+        <img src={story.card.portrait} alt="" />
+      ) : (
+        <svg className="plate-concept" viewBox="0 0 160 200" aria-hidden="true">
+          <path fill="#9fae8d22" stroke="#e4d7a8" d="M28 28h104v148H28z" />
+          <path
+            fill="#cbbb8a28"
+            stroke="#f0e4bf"
+            d="M28 28 84 48v148L28 156z"
+          />
+          <path
+            fill="none"
+            stroke="#f0e4bf"
+            strokeWidth="1.4"
+            d="M40 48h28m-28 8h28m-28 8h28m-28 8h28M78 118v16M86 156l42-38"
+          />
+          <circle cx="112" cy="64" r="9" fill="#f0e4bf" />
+          <path
+            stroke="#d5e2c4"
+            fill="none"
+            strokeWidth="1.4"
+            d="M92 96h30m-30 7h30m-30 7h30"
+          />
+        </svg>
+      )}
+    </figure>
+  );
+}
+
+function chapterTone(index: number) {
+  return "tone-" + (((index % 5) + 5) % 5);
+}
+
+function chapterLookback(chapter: Chapter, dimension: Dimension | undefined) {
+  const keyed = dimension ? chapter.coach[dimension] : undefined;
+  return keyed || chapter.coachDefault;
 }
 export default function Experience() {
   const [view, setView] = useState<View>("home");
@@ -82,7 +159,8 @@ export default function Experience() {
   const [library, setLibrary] = useState<JourneyRecord[]>([]);
   const [auth, setAuth] = useState<AuthStatus>({ configured: false });
   const [login, setLogin] = useState<"draw" | "account" | null>(null);
-  const [motionPaused, setMotionPaused] = useState(false);
+  const [motionMode, setMotionMode] = useState<"auto" | "on" | "off">("auto");
+  const [prefersReduce, setPrefersReduce] = useState(false);
   const pendingDraw = useRef<(() => void) | null>(null);
   const guestDrawAllowed = useRef(false);
   const runId = useRef<string | null>(null);
@@ -90,6 +168,17 @@ export default function Experience() {
     setLogin(null);
     pendingDraw.current = null;
   }, [view]);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPrefersReduce(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  // Auto follows the system. 动效开 / 动效关 is an explicit choice and stays put.
+  const motionPaused =
+    motionMode === "off" || (motionMode === "auto" && prefersReduce);
+  const motionForced = motionMode === "on";
   useEffect(() => {
     try {
       let records = parseLibrary(localStorage.getItem(LIBRARY_KEY));
@@ -263,7 +352,15 @@ export default function Experience() {
       className={
         "museum immersive screen-" +
         view +
-        (motionPaused ? " motion-paused" : "")
+        (view === "situation" ||
+        view === "read" ||
+        view === "chapter" ||
+        view === "ending" ||
+        view === "personal"
+          ? " reading-screen"
+          : "") +
+        (motionPaused ? " motion-paused" : " motion-on") +
+        (motionForced ? " motion-forced" : "")
       }
     >
       <VortexScene active={view === "home"} paused={motionPaused} />
@@ -307,13 +404,15 @@ export default function Experience() {
         )}
         <div className="hud-tools">
           <button
-            className="motion-toggle"
+            className={"motion-toggle" + (motionPaused ? " is-off" : " is-on")}
             aria-label={motionPaused ? "开启动效" : "暂停动效"}
-            aria-pressed={motionPaused}
-            onClick={() => setMotionPaused(!motionPaused)}
+            aria-pressed={!motionPaused}
+            onClick={() => setMotionMode(motionPaused ? "on" : "off")}
           >
-            {motionPaused ? "▷" : "Ⅱ"}
-            <span>动效</span>
+            <span className="motion-glyph" aria-hidden="true">
+              {motionPaused ? "▷" : "✦"}
+            </span>
+            <span className="motion-label">{motionPaused ? "动效关" : "动效开"}</span>
           </button>
           <button
             className="my-entry"
@@ -354,6 +453,7 @@ export default function Experience() {
       {view === "situation" && (
         <section className="reader">
           <p className="eyebrow">BEFORE THE STORY BEGINS</p>
+          <StoryPlate story={story} frame={0} />
           <h1>先认识一下，{story.card.name}。</h1>
           <p className="notice">
             {story.status === "placeholder"
@@ -419,6 +519,15 @@ export default function Experience() {
               }}
             />
           </div>
+          <div
+            className={"chapter-mast " + chapterTone(readerChapterIndex)}
+            aria-hidden="true"
+          >
+            <b>{String(readerChapterIndex + 1).padStart(2, "0")}</b>
+            <i />
+            <span>第 {readerChapterIndex + 1} 章</span>
+          </div>
+          <StoryPlate story={story} frame={readerChapterIndex} />
           <h1>{readerChapter.title}</h1>
           {fork.echoes
             .filter((e) => flags.has(e.ifFlag))
@@ -439,7 +548,7 @@ export default function Experience() {
                 {fork.options.map((o, i) => (
                   <button key={o.id} onClick={() => setFeedback(o)}>
                     <span>0{i + 1}</span>
-                    {o.text}
+                    <span className="option-copy">{o.text}</span>
                     <b>↗</b>
                   </button>
                 ))}
@@ -447,13 +556,11 @@ export default function Experience() {
               <p className="muted small">每个选择都有获得，也有代价。</p>
             </>
           ) : (
-            <div className="coach" aria-live="polite">
-              <p className="eyebrow">
-                选择之后 · {info[feedback.dimension].label}
-              </p>
+            <div className="choice-result" aria-live="polite">
+              <p className="eyebrow">这个选择</p>
               <h3>{feedback.text}</h3>
               <p>{feedback.reason}</p>
-              <p className="muted">代价：{feedback.cost}</p>
+              <p className="muted">要付出：{feedback.cost}</p>
               <button className="primary" onClick={next}>
                 继续这段人生 →
               </button>
@@ -462,8 +569,17 @@ export default function Experience() {
         </section>
       )}
       {view === "chapter" && (
-        <section className="reader">
+        <section
+          className={
+            "reader chapter-break " +
+            chapterTone(path.completedChapterIndex ?? 0)
+          }
+        >
+          <p className="chapter-seal" aria-hidden="true">
+            {String((path.completedChapterIndex ?? 0) + 1).padStart(2, "0")}
+          </p>
           <p className="eyebrow">A MOMENT TO LOOK BACK</p>
+          <StoryPlate story={story} frame={(path.completedChapterIndex ?? 0) + 1} />
           <h1>{chapter.title} · 章末回望</h1>
           <Radar choices={choices} name={story.card.name} />
           <p className="muted center small">
@@ -471,11 +587,26 @@ export default function Experience() {
           </p>
           <div className="coach">
             <span>✧ 一点回望</span>
-            <p>{chapter.coachDefault}</p>
+            <p>
+              {chapterLookback(chapter, fragments[fragments.length - 1])}
+            </p>
           </div>
-          <p className="fragment-earned">
-            ✦ 收集到一枚「{info[fragments[fragments.length - 1]].label}」碎片
-          </p>
+          <div
+            className="fragment-earned"
+            style={
+              {
+                "--gem-color": info[fragments[fragments.length - 1]].color,
+              } as React.CSSProperties
+            }
+          >
+            <FragmentGem
+              dimension={fragments[fragments.length - 1]}
+              className="fragment-earned-gem"
+            />
+            <span>
+              收集到一枚「{info[fragments[fragments.length - 1]].label}」碎片
+            </span>
+          </div>
           <p className="muted small">
             取本章最常出现的维度；三次各不同时，以最后一次为准。
           </p>
@@ -491,8 +622,9 @@ export default function Experience() {
         </section>
       )}
       {view === "ending" && (
-        <section className="reader">
+        <section className="reader ending-screen">
           <p className="eyebrow">AN ENDING, AND A BEGINNING</p>
+          <StoryPlate story={story} frame={2} />
           <h1>{chooseEnding(story, choices).title}</h1>
           <p className="prose">{chooseEnding(story, choices).text}</p>
           <Radar choices={choices} name={story.card.name} />
@@ -532,29 +664,11 @@ export default function Experience() {
         />
       )}
       {view === "personal" && (
-        <section className="reader">
-          <p className="eyebrow">YOUR PARALLEL LIFE</p>
-          <h1>
-            把现实里的问号，
-            <br />
-            放进另一段人生。
-          </h1>
-          <p className="prose">
-            你的困惑将被改写为虚构角色，经过角色确认后，再走过 3–5 个关键岔路。
-          </p>
-          <div className="coach">
-            <h3>这扇门，还在准备中。</h3>
-            <p>
-              个人故事生成、脱敏处理和账号权益尚未接入，因此这里暂不收集你的现实困惑。
-            </p>
-            <p className="muted">
-              正式版五种碎片各一枚可兑换一次体验；每完成四条故事提供一次保底解锁。开发样篇不发放正式权益。
-            </p>
-          </div>
-          <button className="primary" onClick={() => go("hall")}>
-            去故事馆，体验她的人生 →
-          </button>
-        </section>
+        <PersonalLife
+          records={library}
+          onHall={() => go("hall")}
+          onCollection={() => go("collection")}
+        />
       )}
       {view !== "home" && (
         <p className="game-endnote">人物与未来均为虚构 · 不替你选择人生</p>

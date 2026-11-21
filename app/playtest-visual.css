@@ -1,0 +1,665 @@
+/* Playtest visual slice: reading comfort, phone layout, motion toggle,
+   fragment / five-dimension presence, and chapter breaks.
+   Homepage painting, story text, and lookback cadence are unchanged. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Do not clip overflow on body or main. overflow: clip paints as a containing
+   block, so a fixed vortex inside it grows to the document instead of the
+   viewport and the blur layer can blank a phone. Sideways scroll is stopped
+   on the pieces that actually stick out. */
+.museum.immersive {
+  overflow-x: visible;
+  overflow-y: visible;
+}
+.hall-card:before {
+  left: 8px;
+  right: 8px;
+}
+
+/* FB-003 — the toggle has to read as on or off without watching the scene. */
+.motion-toggle {
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+}
+.motion-toggle .motion-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 1.4em;
+  font-style: normal;
+}
+.motion-toggle.is-on {
+  color: #f6edd8;
+  border-color: rgba(240, 214, 160, 0.85);
+  background: rgba(217, 197, 153, 0.18);
+  box-shadow: 0 0 18px rgba(217, 197, 153, 0.45);
+}
+.motion-toggle.is-off {
+  color: #8d998e;
+  border-color: rgba(168, 176, 160, 0.35);
+  background: rgba(8, 16, 15, 0.35);
+  box-shadow: none;
+}
+.motion-on .vortex-scene.is-active .vortex-aura {
+  animation: aura-breathe 5.5s ease-in-out infinite alternate;
+}
+.motion-paused .vortex-aura {
+  animation: none;
+  opacity: 0.2;
+  transform: none;
+}
+.motion-paused .menu-content,
+.motion-paused .story-hall,
+.motion-paused .hall-card,
+.motion-paused .relic-inner,
+.motion-paused .tarot-dialog,
+.motion-paused .tarot-dialog *,
+.motion-paused .fragment-earned-gem,
+.motion-paused .gem-owned .gem-orbit:before,
+.motion-paused .chapter-seal,
+.motion-paused .chapter-mast,
+.motion-paused .story-plate,
+.motion-paused .radar-shape {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+@keyframes aura-breathe {
+  from {
+    opacity: 0.35;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+}
+@keyframes gem-glint {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 8px var(--gem-color, #d9c599));
+  }
+  50% {
+    transform: translateY(-6px) scale(1.06);
+    filter: drop-shadow(0 0 22px var(--gem-color, #d9c599));
+  }
+}
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes chapter-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes radar-pulse {
+  0%,
+  100% {
+    fill-opacity: 0.85;
+  }
+  50% {
+    fill-opacity: 1;
+  }
+}
+
+/* FB-001 — a lifted warm plate, quieter grain, no light theme. */
+.reading-screen .film-grain {
+  opacity: 0.012;
+}
+.reading-screen .is-distant .vortex-painting {
+  filter: none;
+  opacity: 0.12;
+}
+.reading-screen .is-distant canvas {
+  opacity: 0;
+}
+.reading-screen .reader {
+  background:
+    linear-gradient(180deg, rgba(52, 64, 59, 0.97), rgba(34, 46, 43, 0.98));
+  border: 1px solid rgba(232, 214, 176, 0.18);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 226, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.28);
+  margin-top: 8px;
+  margin-bottom: 28px;
+}
+.reading-screen .prose,
+.reading-screen .coach,
+.reading-screen .choice-prompt,
+.reading-screen .options button {
+  overflow-wrap: anywhere;
+}
+.reading-screen .prose {
+  color: #f6efe4;
+  letter-spacing: 0.01em;
+  line-height: 1.9;
+  max-width: 38em;
+}
+.reading-screen .prose p {
+  margin: 0 0 1.15em;
+}
+.reading-screen .reader h1 {
+  color: #f8f1e4;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+}
+.reading-screen .reader h3,
+.reading-screen .choice-prompt {
+  color: #f3eadc;
+}
+.reading-screen .muted,
+.reading-screen .notice,
+.reading-screen .echo {
+  color: #d5dece;
+}
+.reading-screen .options button {
+  color: #f7f3ea;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.7;
+  padding: 18px 16px;
+}
+.reading-screen .options button .option-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: 0.01em;
+  line-height: 1.7;
+  white-space: normal;
+}
+.reading-screen .options b {
+  flex: none;
+  padding-top: 0.2em;
+}
+.reading-screen .coach {
+  color: #f3eee4;
+  background: rgba(255, 248, 232, 0.04);
+}
+.reading-screen .reader-meta button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* FB-009 — existing portrait, or the card's concept plate. Frames vary by chapter. */
+.story-plate {
+  margin: 0 0 22px;
+  padding: 14px 12px 10px;
+  border: 1px solid rgba(232, 214, 176, 0.28);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(214, 186, 120, 0.16), transparent 58%),
+    rgba(14, 24, 22, 0.45);
+  overflow: hidden;
+  animation: chapter-enter 0.55s ease-out;
+}
+.story-plate img,
+.story-plate .plate-concept {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 280px;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center bottom;
+}
+.plate-banner .plate-concept,
+.plate-concept {
+  width: min(100%, 260px);
+}
+.plate-medallion {
+  width: min(230px, 72%);
+  margin-inline: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.plate-medallion img,
+.plate-medallion .plate-concept {
+  width: 118%;
+  max-width: none;
+  height: 118%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center 16%;
+}
+.plate-ledger {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  min-height: 168px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 21px,
+      rgba(232, 214, 176, 0.07) 22px
+    ),
+    rgba(14, 24, 22, 0.35);
+}
+.plate-ledger img,
+.plate-ledger .plate-concept {
+  max-height: 240px;
+  margin: 0 8px 0 auto;
+}
+
+/* FB-008 — chapter index changes the accent, and the lookback is a break. */
+.tone-0 { --chapter-accent: #e4cb8e; }
+.tone-1 { --chapter-accent: #e2a56d; }
+.tone-2 { --chapter-accent: #e3a3ab; }
+.tone-3 { --chapter-accent: #b7c4ee; }
+.tone-4 { --chapter-accent: #a9d4b6; }
+.chapter-mast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  color: var(--chapter-accent);
+  animation: chapter-enter 0.45s ease-out;
+}
+.chapter-mast b {
+  font: 32px/1 var(--serif);
+  letter-spacing: 0.06em;
+}
+.chapter-mast i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--chapter-accent), transparent);
+}
+.chapter-mast span {
+  font: 12px/1 var(--serif);
+  letter-spacing: 0.18em;
+}
+.reading-screen .reader.chapter-break {
+  border-top: 4px solid var(--chapter-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 226, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.28);
+}
+.chapter-break.tone-0 { background: linear-gradient(180deg, rgba(228, 203, 142, 0.16), rgba(34, 46, 43, 0.98) 28%); }
+.chapter-break.tone-1 { background: linear-gradient(180deg, rgba(226, 165, 109, 0.18), rgba(34, 46, 43, 0.98) 28%); }
+.chapter-break.tone-2 { background: linear-gradient(180deg, rgba(227, 163, 171, 0.18), rgba(34, 46, 43, 0.98) 28%); }
+.chapter-break.tone-3 { background: linear-gradient(180deg, rgba(183, 196, 238, 0.18), rgba(34, 46, 43, 0.98) 28%); }
+.chapter-break.tone-4 { background: linear-gradient(180deg, rgba(169, 212, 182, 0.18), rgba(34, 46, 43, 0.98) 28%); }
+.chapter-seal {
+  margin: 0;
+  text-align: center;
+  font: 76px/0.9 var(--serif);
+  letter-spacing: 0.08em;
+  color: var(--chapter-accent);
+  text-shadow: 0 0 28px var(--chapter-accent);
+  animation: chapter-enter 0.5s ease-out;
+}
+.ending-screen {
+  border-top: 4px solid #e4cb8e;
+}
+
+/* FB-007 — dimension colors stay distinct; the earned gem is a real object. */
+.museum.immersive .radar {
+  width: min(100%, 300px);
+  overflow: visible;
+}
+.museum.immersive .radar-glow {
+  fill: rgba(228, 203, 142, 0.08);
+}
+.museum.immersive .radar-ring {
+  fill: none;
+  stroke: rgba(244, 232, 206, 0.38);
+  stroke-width: 1;
+}
+.museum.immersive .radar-shape {
+  fill: rgba(244, 228, 190, 0.34);
+  stroke: #f6edd8;
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 10px rgba(228, 203, 142, 0.7));
+}
+.motion-on .radar-shape {
+  animation: radar-pulse 3.2s ease-in-out infinite;
+}
+.museum.immersive .radar text {
+  font-family: var(--serif);
+}
+.fragment-earned {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 22px auto;
+  padding: 16px 18px;
+  max-width: 440px;
+  border-radius: 18px;
+  border: 1px solid rgba(217, 197, 153, 0.45);
+  background: radial-gradient(
+    ellipse at 20% 50%,
+    rgba(217, 197, 153, 0.16),
+    transparent 70%
+  );
+  color: #f6edd8;
+  text-align: left;
+}
+.fragment-earned-gem {
+  width: 64px;
+  height: 76px;
+  flex: none;
+  color: var(--gem-color, #d9c599);
+  animation: gem-glint 2.8s ease-in-out infinite;
+}
+.gem-owned .gem-orbit:before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 108px;
+  height: 108px;
+  margin: -54px 0 0 -54px;
+  border-radius: 50%;
+  border: 1px dashed var(--gem-color);
+  opacity: 0.7;
+  animation: orbit-spin 16s linear infinite;
+}
+.gem-owned .fragment-gem {
+  filter: drop-shadow(0 0 16px var(--gem-color));
+}
+.gem-owned {
+  box-shadow: inset 0 0 0 1px var(--gem-color);
+}
+.gem-collection article {
+  border-radius: 16px;
+  padding: 8px 6px 14px;
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    rgba(217, 197, 153, 0.1),
+    transparent 70%
+  );
+}
+.gem-collection article.gem-owned {
+  background: radial-gradient(
+    ellipse at 50% 28%,
+    rgba(255, 244, 214, 0.08),
+    transparent 68%
+  );
+}
+
+/* FB-006 — small screens: wrap, safe areas, no iOS focus zoom, lighter GPU. */
+@supports (padding: max(0px)) {
+  .game-hud,
+  .home-hud {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-left: max(4.5%, env(safe-area-inset-left));
+    padding-right: max(4.5%, env(safe-area-inset-right));
+  }
+  .game-menu {
+    padding-top: calc(96px + env(safe-area-inset-top));
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+  .reading-screen .reader {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 800px) {
+  .vortex-aura {
+    filter: blur(12px);
+  }
+  .is-distant .vortex-painting,
+  .hall-card:before {
+    filter: none;
+  }
+  .vortex-painting {
+    will-change: auto;
+  }
+  .is-distant canvas {
+    display: none;
+  }
+  .menu-start {
+    backdrop-filter: none;
+  }
+  .story-search input,
+  .login-field input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  .situation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .museum.immersive .motion-toggle span.motion-label {
+    display: inline;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  .game-hud {
+    margin: 0;
+    max-width: 100%;
+  }
+  .game-wordmark {
+    min-width: 0;
+  }
+  .menu-content h1 {
+    letter-spacing: 0.08em;
+    padding-left: 0;
+  }
+  .menu-content > .eyebrow {
+    letter-spacing: 0.18em;
+    flex-wrap: wrap;
+  }
+  .hall-heading h1 {
+    letter-spacing: 0.2em;
+    padding-left: 0;
+  }
+  .hall-categories {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: 100%;
+  }
+  .hall-card {
+    width: min(100%, 280px);
+    flex-basis: min(100%, 280px);
+    max-width: 100%;
+  }
+  .hall-card .cover-title h3,
+  .relic-back h3,
+  .relic-back p,
+  .relic-back small {
+    overflow-wrap: anywhere;
+    letter-spacing: 0.04em;
+  }
+  .relic-back {
+    overflow-x: hidden;
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding: 48px 16px 24px;
+  }
+  .relic-back h3 {
+    font-size: 17px;
+    line-height: 1.55;
+    margin: 10px 0;
+  }
+  .hall-draw {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hall-draw .secondary {
+    margin-left: 0;
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .reading-screen .reader {
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+  }
+  .reading-screen .prose {
+    font-size: 17px;
+    line-height: 1.85;
+    letter-spacing: 0;
+  }
+  .reading-screen .reader h1 {
+    font-size: 26px;
+  }
+  .story-plate {
+    margin-bottom: 14px;
+    padding: 8px;
+  }
+  .story-plate img,
+  .story-plate .plate-concept {
+    max-height: 156px;
+  }
+  .plate-medallion {
+    width: min(148px, 52%);
+    max-height: 148px;
+  }
+  .plate-ledger {
+    justify-content: center;
+  }
+  .plate-ledger img,
+  .plate-ledger .plate-concept {
+    margin: 0 auto;
+    max-height: 190px;
+  }
+  .chapter-seal {
+    font-size: 56px;
+  }
+  .fragment-earned {
+    align-items: flex-start;
+  }
+  .gem-collection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .my-stats {
+    flex-wrap: wrap;
+    row-gap: 18px;
+  }
+  .login-field input,
+  .story-search input {
+    font-size: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .game-wordmark > span {
+    display: none;
+  }
+  .menu-content h1 {
+    font-size: 40px;
+  }
+  .chapter-mast b {
+    font-size: 26px;
+  }
+}
+.choice-result {
+  margin: 28px 0 8px;
+  padding: 2px 0 4px 16px;
+  border-left: 2px solid rgba(232, 214, 176, 0.72);
+  text-align: left;
+}
+.choice-result h3 {
+  margin: 6px 0 10px;
+  font: 20px/1.55 var(--serif);
+  color: #f6efe4;
+}
+.choice-result p {
+  margin: 0 0 10px;
+  color: #f3eee4;
+  line-height: 1.75;
+}
+.choice-result .primary {
+  margin-top: 8px;
+}
+.readiness,
+.readiness-meter,
+.fragment-rules {
+  margin: 22px 0;
+  padding: 16px 18px;
+  border: 1px solid rgba(232, 214, 176, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 248, 232, 0.04);
+  color: #e7ecdf;
+  line-height: 1.75;
+}
+.readiness h3,
+.readiness-meter h3 {
+  margin: 14px 0 8px;
+  color: #f6efe4;
+  font: 18px/1.5 var(--serif);
+}
+.readiness h3:first-child,
+.readiness-meter .eyebrow + h3 {
+  margin-top: 8px;
+}
+.readiness p,
+.readiness-meter p,
+.fragment-rules p {
+  margin: 0 0 12px;
+}
+.readiness-meter ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+.readiness-meter li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.personal-life .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.login-field input {
+  font-size: 16px;
+}
+@media (max-width: 600px) {
+  .personal-life .actions .primary,
+  .personal-life .actions .secondary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* System reduced-motion still zeroes animations (see immersive.css). A manual
+   动效开 adds .motion-forced and these rules win on specificity, so the aura,
+   fragment, radar, and chapter entrance actually play. 动效关 removes the
+   class, and auto mode never adds it, so they stay off. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-forced .vortex-scene.is-active .vortex-aura {
+    animation: aura-breathe 5.5s ease-in-out infinite alternate !important;
+  }
+  .motion-forced .fragment-earned-gem {
+    animation: gem-glint 2.8s ease-in-out infinite !important;
+  }
+  .motion-forced .gem-owned .gem-orbit:before {
+    animation: orbit-spin 16s linear infinite !important;
+  }
+  .motion-forced .radar-shape {
+    animation: radar-pulse 3.2s ease-in-out infinite !important;
+  }
+  .motion-forced .chapter-seal {
+    animation: chapter-enter 0.5s ease-out !important;
+  }
+  .motion-forced .chapter-mast {
+    animation: chapter-enter 0.45s ease-out !important;
+  }
+  .motion-forced .story-plate {
+    animation: chapter-enter 0.55s ease-out !important;
+  }
+}
