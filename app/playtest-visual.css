@@ -6,15 +6,18 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
-body {
-  overflow-x: clip;
-}
 
-/* The fixed vortex must stay viewport-sized. overflow on <main> made it
-   cover the whole document and, with blur, was heavy enough to blank a phone. */
+/* Do not clip overflow on body or main. overflow: clip paints as a containing
+   block, so a fixed vortex inside it grows to the document instead of the
+   viewport and the blur layer can blank a phone. Sideways scroll is stopped
+   on the pieces that actually stick out. */
 .museum.immersive {
   overflow-x: visible;
   overflow-y: visible;
+}
+.hall-card:before {
+  left: 8px;
+  right: 8px;
 }
 
 /* FB-003 — the toggle has to read as on or off without watching the scene. */
@@ -471,10 +474,6 @@ body {
     flex-basis: min(100%, 280px);
     max-width: 100%;
   }
-  .hall-card:before {
-    left: 8px;
-    right: 8px;
-  }
   .hall-card .cover-title h3,
   .relic-back h3,
   .relic-back p,
@@ -564,14 +563,30 @@ body {
     font-size: 26px;
   }
 }
+/* System reduced-motion still zeroes animations (see immersive.css). A manual
+   动效开 adds .motion-forced and these rules win on specificity, so the aura,
+   fragment, radar, and chapter entrance actually play. 动效关 removes the
+   class, and auto mode never adds it, so they stay off. */
 @media (prefers-reduced-motion: reduce) {
-  .motion-on .vortex-scene.is-active .vortex-aura,
-  .fragment-earned-gem,
-  .gem-owned .gem-orbit:before,
-  .motion-on .radar-shape,
-  .chapter-seal,
-  .chapter-mast,
-  .story-plate {
-    animation: none !important;
+  .motion-forced .vortex-scene.is-active .vortex-aura {
+    animation: aura-breathe 5.5s ease-in-out infinite alternate !important;
+  }
+  .motion-forced .fragment-earned-gem {
+    animation: gem-glint 2.8s ease-in-out infinite !important;
+  }
+  .motion-forced .gem-owned .gem-orbit:before {
+    animation: orbit-spin 16s linear infinite !important;
+  }
+  .motion-forced .radar-shape {
+    animation: radar-pulse 3.2s ease-in-out infinite !important;
+  }
+  .motion-forced .chapter-seal {
+    animation: chapter-enter 0.5s ease-out !important;
+  }
+  .motion-forced .chapter-mast {
+    animation: chapter-enter 0.45s ease-out !important;
+  }
+  .motion-forced .story-plate {
+    animation: chapter-enter 0.55s ease-out !important;
   }
 }

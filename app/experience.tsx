@@ -153,7 +153,8 @@ export default function Experience() {
   const [library, setLibrary] = useState<JourneyRecord[]>([]);
   const [auth, setAuth] = useState<AuthStatus>({ configured: false });
   const [login, setLogin] = useState<"draw" | "account" | null>(null);
-  const [motionPaused, setMotionPaused] = useState(false);
+  const [motionMode, setMotionMode] = useState<"auto" | "on" | "off">("auto");
+  const [prefersReduce, setPrefersReduce] = useState(false);
   const pendingDraw = useRef<(() => void) | null>(null);
   const guestDrawAllowed = useRef(false);
   const runId = useRef<string | null>(null);
@@ -163,13 +164,15 @@ export default function Experience() {
   }, [view]);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (media.matches) setMotionPaused(true);
-    const onChange = () => {
-      if (media.matches) setMotionPaused(true);
-    };
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
+    const sync = () => setPrefersReduce(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
   }, []);
+  // Auto follows the system. 动效开 / 动效关 is an explicit choice and stays put.
+  const motionPaused =
+    motionMode === "off" || (motionMode === "auto" && prefersReduce);
+  const motionForced = motionMode === "on";
   useEffect(() => {
     try {
       let records = parseLibrary(localStorage.getItem(LIBRARY_KEY));
@@ -350,7 +353,8 @@ export default function Experience() {
         view === "personal"
           ? " reading-screen"
           : "") +
-        (motionPaused ? " motion-paused" : " motion-on")
+        (motionPaused ? " motion-paused" : " motion-on") +
+        (motionForced ? " motion-forced" : "")
       }
     >
       <VortexScene active={view === "home"} paused={motionPaused} />
@@ -397,7 +401,7 @@ export default function Experience() {
             className={"motion-toggle" + (motionPaused ? " is-off" : " is-on")}
             aria-label={motionPaused ? "开启动效" : "暂停动效"}
             aria-pressed={!motionPaused}
-            onClick={() => setMotionPaused((paused) => !paused)}
+            onClick={() => setMotionMode(motionPaused ? "on" : "off")}
           >
             <span className="motion-glyph" aria-hidden="true">
               {motionPaused ? "▷" : "✦"}
