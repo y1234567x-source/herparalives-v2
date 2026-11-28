@@ -1,7 +1,9 @@
-import { authConfigured, authRequest, saveAuthSession } from "@/server/auth";
+import { loginConfigured, authRequest, saveAuthSession } from "@/server/auth";
 import { otpVerifySchema } from "@/lib/auth-contract";
+import { sameOrigin } from "@/server/request-origin";
 export async function POST(request: Request) {
-  if (!authConfigured())
+  if (!sameOrigin(request)) return new Response(null, { status: 403 });
+  if (!loginConfigured())
     return Response.json(
       { message: "短信登录暂未开放，你可以继续以游客身份体验。" },
       { status: 503 },
@@ -21,17 +23,23 @@ export async function POST(request: Request) {
     });
     if (!response?.ok)
       return Response.json(
-        { message: "验证码不正确或已过期，请重新获取。" },
-        { status: 400 },
+        {
+          message:
+            response?.status === 429
+              ? "尝试次数过多，请稍后再试。"
+              : "验证码不正确或已过期，请重新获取。",
+        },
+        { status: response?.status === 429 ? 429 : 400 },
       );
     const session = await response.json();
-    if (!session.access_token || !session.refresh_token)
+    if (!session.access_token || !session.refresh_token || !session.user?.id)
       return Response.json(
         { message: "登录未完成，请重试。" },
         { status: 502 },
       );
     await saveAuthSession(session);
     return Response.json({
+      userId: session.user.id,
       userLabel:
         parsed.data.phone.slice(0, -8) + " ···· " + parsed.data.phone.slice(-4),
     });

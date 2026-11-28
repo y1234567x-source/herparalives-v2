@@ -11,6 +11,10 @@ export default function MySpace({
   onResume,
   onExplore,
   onLogout,
+  syncStatus,
+  onSync,
+  guestCount,
+  onImportGuest,
 }: {
   records: JourneyRecord[];
   userLabel?: string;
@@ -18,6 +22,10 @@ export default function MySpace({
   onResume: (record: JourneyRecord) => void;
   onExplore: () => void;
   onLogout: () => void;
+  syncStatus: string;
+  onSync?: () => void;
+  guestCount: number;
+  onImportGuest: () => void;
 }) {
   const [tab, setTab] = useState<"fragments" | "atlas">("fragments");
   const { fragments, journeys, totalFragments, completed } = summarizeLibrary(
@@ -35,7 +43,7 @@ export default function MySpace({
           <h1>{userLabel ? "欢迎回来，旅人。" : "每一种选择，都属于你。"}</h1>
           <p className="my-status">
             {userLabel ? userLabel + " · 已登录" : "访客旅人"}
-            <span>记录保存在这台设备</span>
+            <span role="status">{syncStatus}</span>
           </p>
         </div>
         <button
@@ -46,6 +54,22 @@ export default function MySpace({
           <span aria-hidden="true">↗</span>
         </button>
       </div>
+      {userLabel && (
+        <div className="account-sync-actions">
+          <button className="text-action" onClick={onSync}>
+            同步记录 ↻
+          </button>
+          {guestCount > 0 && (
+            <p>
+              本机还有 {guestCount} 条游客记录。确认是你自己的记录后，可以{" "}
+              <button className="text-action" onClick={onImportGuest}>
+                保存到这个账号
+              </button>
+              。
+            </p>
+          )}
+        </div>
+      )}
       <div className="my-stats">
         <p>
           <strong>{totalFragments.toString().padStart(2, "0")}</strong>
@@ -108,7 +132,10 @@ export default function MySpace({
             ))}
           </div>
           <p className="collection-footnote">
-            集齐五种碎片，便离「我的平行人生」更近一步。当前样篇的收集保留在本机。
+            集齐五种碎片，便离「我的平行人生」更近一步。
+            {userLabel
+              ? "碎片随故事记录同步到账号；以同步状态为准。"
+              : "游客记录保留在本机，清理浏览器后可能丢失。"}
           </p>
         </div>
       ) : (

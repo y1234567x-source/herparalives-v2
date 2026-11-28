@@ -8,13 +8,9 @@ import VortexScene from "./vortex-scene";
 import MySpace from "./my-space";
 import LoginOverlay from "./login-overlay";
 import type { AuthStatus } from "@/lib/auth-contract";
-import {
-  LIBRARY_KEY,
-  parseLibrary,
-  restoreJourney,
-  upsertJourney,
-  type JourneyRecord,
-} from "@/lib/local-library";
+import type { JourneyRecord } from "@/lib/local-library";
+import { restoreJourney } from "@/lib/local-library";
+import { useJourneyLibrary } from "@/lib/use-journey-library";
 import { DIMENSIONS, DIMENSION_INFO as info } from "@/lib/dimensions";
 import type { Story, StoryOption } from "@/lib/story-schema";
 import {
@@ -79,47 +75,57 @@ export default function Experience() {
   const [font, setFont] = useState(18);
   const [story, setStory] = useState<Story>(sampleStory);
   const [saved, setSaved] = useState("");
-  const [library, setLibrary] = useState<JourneyRecord[]>([]);
   const [auth, setAuth] = useState<AuthStatus>({ configured: false });
+  const {
+    library,
+    status: syncStatus,
+    persist,
+    sync,
+    guestCount,
+    importGuest,
+  } = useJourneyLibrary(auth.userId);
   const [login, setLogin] = useState<"draw" | "account" | null>(null);
   const [motionPaused, setMotionPaused] = useState(false);
   const pendingDraw = useRef<(() => void) | null>(null);
   const guestDrawAllowed = useRef(false);
   const runId = useRef<string | null>(null);
+  const authVersion = useRef(0);
   useEffect(() => {
     setLogin(null);
     pendingDraw.current = null;
   }, [view]);
   useEffect(() => {
-    try {
-      let records = parseLibrary(localStorage.getItem(LIBRARY_KEY));
-      if (!records.length) {
-        const raw = localStorage.getItem("herparalives-v2-sample");
-        if (raw) {
-          const legacy = JSON.parse(raw);
-          records = parseLibrary(
-            JSON.stringify([
-              {
-                id: "legacy-record",
-                storyId: legacy.storyId ?? sampleStory.id,
-                choiceIds: legacy.choices,
-                updatedAt: legacy.completedAt,
-              },
-            ]),
-          );
-        }
-      }
-      setLibrary(records);
-    } catch {
-      /* 存储不可用时仍允许游玩。 */
-    }
-    const controller = new AbortController();
-    fetch("/api/auth/status", { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : { configured: false }))
-      .then(setAuth)
-      .catch(() => {});
-    return () => controller.abort();
+    let controller: AbortController;
+    const refreshAuth = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const version = authVersion.current;
+      fetch("/api/auth/status", { signal: controller.signal })
+        .then((r) => {
+          if (!r.ok) throw new Error("Auth temporarily unavailable");
+          return r.json();
+        })
+        .then((status: AuthStatus) => {
+          if (version === authVersion.current) setAuth(status);
+        })
+        .catch(() => {});
+    };
+    refreshAuth();
+    window.addEventListener("focus", refreshAuth);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("focus", refreshAuth);
+    };
   }, []);
+  useEffect(() => {
+    setChoices([]);
+    setFeedback(null);
+    runId.current = null;
+    if (["read", "chapter", "ending", "situation"].includes(view)) {
+      window.history.replaceState(null, "", "#collection");
+      setView("collection");
+    }
+  }, [auth.userId]);
   const totalChoices = story.chapters.reduce(
     (sum, c) => sum + c.forks.length,
     0,
@@ -130,7 +136,8 @@ export default function Experience() {
   const readerChapterIndex =
     path.current?.chapterIndex ?? Math.max(0, story.chapters.length - 1);
   const readerChapter = story.chapters[readerChapterIndex];
-  const forkIndex = path.current?.forkIndex ?? Math.max(0, readerChapter.forks.length - 1);
+  const forkIndex =
+    path.current?.forkIndex ?? Math.max(0, readerChapter.forks.length - 1);
   const fork = path.current?.fork ?? readerChapter.forks[forkIndex];
   const chapter = path.chapterJustCompleted
     ? story.chapters[path.completedChapterIndex ?? 0]
@@ -178,13 +185,7 @@ export default function Experience() {
       choiceIds: updated.map((o) => o.id),
       updatedAt: new Date().toISOString(),
     };
-    const records = upsertJourney(library, record);
-    setLibrary(records);
-    try {
-      localStorage.setItem(LIBRARY_KEY, JSON.stringify(records));
-    } catch {
-      setSaved("这台设备暂时无法保存记录，请保持当前页面打开。");
-    }
+    runId.current = persist(record);
   };
   const resumeRecord = (record: JourneyRecord) => {
     const restored = restoreJourney(
@@ -226,17 +227,20 @@ export default function Experience() {
     pendingDraw.current = null;
     action?.();
   };
-  const signedIn = (label: string) => {
-    setAuth({ ...auth, userLabel: label });
+  const signedIn = (user: { userId: string; userLabel: string }) => {
+    authVersion.current++;
+    setAuth({ ...auth, ...user });
     setLogin(null);
     const action = pendingDraw.current;
     pendingDraw.current = null;
     action?.();
   };
   const logout = async () => {
+    authVersion.current++;
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       if (response.ok) setAuth({ configured: auth.configured });
+      else setSaved("暂时无法退出登录，请稍后再试。");
     } catch {
       setSaved("暂时无法退出登录，请稍后再试。");
     }
@@ -256,7 +260,13 @@ export default function Experience() {
     setChoices(updated);
     setFeedback(null);
     const after = traverse(story, updated);
-    go(after.chapterJustCompleted ? "chapter" : after.finished ? "ending" : "read");
+    go(
+      after.chapterJustCompleted
+        ? "chapter"
+        : after.finished
+          ? "ending"
+          : "read",
+    );
   };
   return (
     <main
@@ -394,8 +404,8 @@ export default function Experience() {
         <section className="reader">
           <div className="reader-meta">
             <span>
-              第 {readerChapterIndex + 1} 章 / 共 {story.chapters.length} 章 · 岔路{" "}
-              {forkIndex + 1}
+              第 {readerChapterIndex + 1} 章 / 共 {story.chapters.length} 章 ·
+              岔路 {forkIndex + 1}
             </span>
             <div>
               <button
@@ -481,12 +491,9 @@ export default function Experience() {
           </p>
           <button
             className="primary"
-            onClick={() =>
-              go(path.finished ? "ending" : "read")
-            }
+            onClick={() => go(path.finished ? "ending" : "read")}
           >
-            {path.finished ? "走向结局与回望" : "翻开下一章"}{" "}
-            →
+            {path.finished ? "走向结局与回望" : "翻开下一章"} →
           </button>
         </section>
       )}
@@ -525,6 +532,16 @@ export default function Experience() {
         <MySpace
           records={library}
           userLabel={auth.userLabel}
+          syncStatus={syncStatus}
+          onSync={
+            auth.userId
+              ? () => {
+                  void sync();
+                }
+              : undefined
+          }
+          guestCount={guestCount}
+          onImportGuest={importGuest}
           onLogin={() => setLogin("account")}
           onLogout={logout}
           onResume={resumeRecord}
@@ -559,9 +576,9 @@ export default function Experience() {
       {view !== "home" && (
         <p className="game-endnote">人物与未来均为虚构 · 不替你选择人生</p>
       )}
-      {saved && (
+      {(saved || syncStatus.startsWith("本机存储不可用")) && (
         <p className="storage-status" role="status">
-          {saved}
+          {saved || syncStatus}
         </p>
       )}
       {login && (
