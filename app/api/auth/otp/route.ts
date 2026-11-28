@@ -1,7 +1,9 @@
-import { authConfigured, authRequest } from "@/server/auth";
+import { loginConfigured, authRequest } from "@/server/auth";
 import { otpRequestSchema } from "@/lib/auth-contract";
+import { sameOrigin } from "@/server/request-origin";
 export async function POST(request: Request) {
-  if (!authConfigured())
+  if (!sameOrigin(request)) return new Response(null, { status: 403 });
+  if (!loginConfigured())
     return Response.json(
       { message: "短信登录暂未开放，你可以继续以游客身份体验。" },
       { status: 503 },

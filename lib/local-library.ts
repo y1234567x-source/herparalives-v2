@@ -10,7 +10,7 @@ import {
 import { DIMENSIONS, type Dimension } from "./dimensions.ts";
 
 export const LIBRARY_KEY = "herparalives-v2-library";
-const recordSchema = z.object({
+export const recordSchema = z.object({
   id: z.string().min(1).max(100),
   storyId: z.string().min(1).max(100),
   choiceIds: z.array(z.string().max(100)).max(40),
@@ -50,7 +50,9 @@ export function restoreJourney(
     const option = current.fork.options.find((o) => o.id === id);
     if (!option) return undefined;
     choices.push(option);
-    current = option.next ? findFork(story, option.next) : linearNext(story, current);
+    current = option.next
+      ? findFork(story, option.next)
+      : linearNext(story, current);
   }
   return { story, choices };
 }

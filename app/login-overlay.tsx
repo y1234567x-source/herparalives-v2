@@ -13,7 +13,7 @@ export default function LoginOverlay({
   auth: AuthStatus;
   onClose: () => void;
   onGuest: () => void;
-  onSuccess: (label: string) => void;
+  onSuccess: (user: { userId: string; userLabel: string }) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [stage, setStage] = useState<"invite" | "phone">(
@@ -23,27 +23,37 @@ export default function LoginOverlay({
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const operation = useRef<AbortController | null>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [countdown, setCountdown] = useState(0);
   useEffect(() => {
     dialog.current?.showModal();
-    return () => dialog.current?.close();
+    return () => {
+      dialog.current?.close();
+      operation.current?.abort();
+    };
   }, []);
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
-  const validPhone = /^1\d{10}$/.test(phone);
+  useEffect(() => {
+    if (sent) codeInput.current?.focus();
+  }, [sent]);
+  const validPhone = /^1[3-9]\d{9}$/.test(phone);
   const send = async () => {
     if (!validPhone || busy || countdown) return;
     setBusy(true);
     setMessage("");
+    operation.current = new AbortController();
     try {
       const response = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ phone: "+86" + phone }),
+        signal: operation.current.signal,
       });
       const data = await response.json();
       if (!response.ok || !data.sent) {
@@ -54,6 +64,7 @@ export default function LoginOverlay({
       setCountdown(60);
       setMessage("验证码已发送，请留意手机短信。");
     } catch {
+      if (operation.current?.signal.aborted) return;
       setMessage("网络暂时未连接，请稍后再试。");
     } finally {
       setBusy(false);
@@ -64,19 +75,29 @@ export default function LoginOverlay({
     if (!validPhone || !/^\d{6}$/.test(code) || !sent || busy) return;
     setBusy(true);
     setMessage("");
+    operation.current = new AbortController();
     try {
       const response = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ phone: "+86" + phone, token: code }),
+        signal: operation.current.signal,
       });
       const data = await response.json();
       if (!response.ok) {
         setMessage(data.message ?? "登录未完成，请重试。");
         return;
       }
-      onSuccess(data.userLabel);
+      if (
+        typeof data.userId !== "string" ||
+        typeof data.userLabel !== "string"
+      ) {
+        setMessage("登录未完成，请重试。");
+        return;
+      }
+      onSuccess({ userId: data.userId, userLabel: data.userLabel });
     } catch {
+      if (operation.current?.signal.aborted) return;
       setMessage("网络暂时未连接，请稍后再试。");
     } finally {
       setBusy(false);
@@ -143,7 +164,7 @@ export default function LoginOverlay({
             </small>
           </>
         ) : (
-          <form onSubmit={verify}>
+          <form onSubmit={verify} aria-busy={busy}>
             <p className="login-copy">用手机号，开启你的旅人身份。</p>
             <label className="login-field">
               <span>手机号</span>
@@ -157,6 +178,8 @@ export default function LoginOverlay({
                   maxLength={11}
                   placeholder="请输入手机号"
                   value={phone}
+                  disabled={busy}
+                  autoFocus
                   onChange={(e) => {
                     setPhone(e.target.value.replace(/\D/g, ""));
                     setSent(false);
@@ -170,12 +193,14 @@ export default function LoginOverlay({
               <span>短信验证码</span>
               <div>
                 <input
+                  ref={codeInput}
                   aria-label="短信验证码"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
                   placeholder="六位验证码"
                   value={code}
+                  disabled={!sent || busy}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 />
                 <button
