@@ -24,6 +24,8 @@ import {
   traverse,
 } from "@/lib/journey";
 import { resolveGameScreen, type GameScreen } from "@/lib/game-navigation";
+import ShareControls from "./share-controls";
+import StorySurvey from "./story-survey";
 
 type View = GameScreen;
 function Radar({ choices, name }: { choices: StoryOption[]; name: string }) {
@@ -332,6 +334,7 @@ export default function Experience() {
         <GameMenu
           onEnter={() => go("hall")}
           onPersonal={() => go("personal")}
+          share={<ShareControls />}
           onContinue={
             choices.length
               ? () =>
@@ -349,7 +352,7 @@ export default function Experience() {
         />
       )}
       {view === "hall" && (
-        <StoryHall onStart={start} onRequestDraw={requestDraw} />
+        <StoryHall onStart={start} onRequestDraw={requestDraw} share={<ShareControls />} />
       )}
       {view === "situation" && (
         <section className="reader">
@@ -511,6 +514,15 @@ export default function Experience() {
             <span>✧ 留给自己的问题</span>
             <p>{story.closingQuestion}</p>
           </div>
+          {path.finished && runId.current && (
+            <StorySurvey
+              key={story.id + ":" + runId.current}
+              storyId={story.id}
+              storyVersion={story.version}
+              experienceId={runId.current}
+            />
+          )}
+          <ShareControls />
           <div className="actions">
             <button className="primary" onClick={() => go("collection")}>
               看看收集的碎片 →

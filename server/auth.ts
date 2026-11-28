@@ -4,7 +4,10 @@ import { cookies } from "next/headers";
 const ACCESS = "herpara-access";
 const REFRESH = "herpara-refresh";
 export function authConfigured() {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+  return Boolean(
+    process.env.SUPABASE_URL &&
+    (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY),
+  );
 }
 export async function authRequest(
   path: string,
@@ -19,7 +22,7 @@ export async function authRequest(
     method: body ? "POST" : "GET",
     headers: {
       "content-type": "application/json",
-      apikey: process.env.SUPABASE_ANON_KEY!,
+      apikey: (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY)!,
       ...(token ? { Authorization: "Bearer " + token } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -76,6 +79,7 @@ export async function currentUser() {
   if (!user.id) return undefined;
   const phone = typeof user.phone === "string" ? user.phone : "";
   return {
+    userId: user.id as string,
     userLabel: phone
       ? phone.slice(0, Math.max(0, phone.length - 8)) +
         " ···· " +
