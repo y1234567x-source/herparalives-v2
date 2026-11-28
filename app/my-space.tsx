@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { useState } from "react";
 import { storyCatalog } from "@/content/stories/catalog";
 import { DIMENSIONS, DIMENSION_INFO } from "@/lib/dimensions";
@@ -154,6 +155,10 @@ export default function MySpace({
           )}
         </div>
       )}
+      <nav className="hpl-info-links" aria-label="网站信息">
+        <Link href="/feedback" className="hpl-text-button">意见反馈</Link>
+        <Link href="/about" className="hpl-text-button">关于我们</Link>
+      </nav>
     </section>
   );
 }

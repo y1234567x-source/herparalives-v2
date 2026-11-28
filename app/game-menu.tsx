@@ -4,9 +4,10 @@ type Props = {
   onEnter: () => void;
   onPersonal: () => void;
   onContinue?: () => void;
+  share?: React.ReactNode;
 };
 
-export default function GameMenu({ onEnter, onPersonal, onContinue }: Props) {
+export default function GameMenu({ onEnter, onPersonal, onContinue, share }: Props) {
   const [entering, setEntering] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -64,6 +65,7 @@ export default function GameMenu({ onEnter, onPersonal, onContinue }: Props) {
           </span>
           <span aria-hidden="true">→</span>
         </button>
+        {share}
         <p className="menu-whisper">每个未曾选择的岔路，都有一个她在继续。</p>
       </div>
       <p className="menu-promise">

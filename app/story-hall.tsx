@@ -172,9 +172,11 @@ function StoryCard({
 export default function StoryHall({
   onStart,
   onRequestDraw,
+  share,
 }: {
   onStart: (story: Story) => void;
   onRequestDraw: (action: () => void) => void;
+  share?: React.ReactNode;
 }) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
@@ -235,6 +237,7 @@ export default function StoryHall({
           <br />
           有些心意，等一个她来唤醒。
         </p>
+        {share}
       </header>
       <div className="hall-categories" aria-label="按处境分类">
         <button
